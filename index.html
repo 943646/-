@@ -1916,7 +1916,15 @@ let elevCtx=null, bathCtx=null, maskCtx=null, gjFeatures=null;
 const borderGroup = new THREE.Group(), labelGroup = new THREE.Group();
 scene.add(borderGroup, labelGroup);
 
+/* 贴图尺寸上限：10800×5400 原图解码后每张约 230MB 显存，手机/弱显卡会崩溃白屏，按设备缩小 */
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const TEX_MAX = Math.min(renderer.capabilities.maxTextureSize, IS_MOBILE ? 4096 : 8192);
 function imgToTex(img){
+  if(img.width > TEX_MAX){
+    const ctx = imgToCanvas(img, TEX_MAX, TEX_MAX/2);
+    img = ctx.canvas;
+  }
   const tex = new THREE.Texture(img);
   tex.needsUpdate = true;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
