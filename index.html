@@ -2364,7 +2364,12 @@ addEventListener('resize',()=>{
   else{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); }
 });
 
-main();
+main().catch(e => fail(e && e.message || String(e)));
+addEventListener('error', e => fail(e.message || '脚本错误'));
+renderer.domElement.addEventListener('webglcontextlost', () => {
+  document.getElementById('loader').classList.remove('off');
+  fail('显卡内存不足，3D 画面已中断，请关闭其他标签页后刷新');
+});
 </script>
 </body>
 </html>
