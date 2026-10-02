@@ -185,6 +185,19 @@
 </style>
 </head>
 <body>
+<script>
+/* 最早注册的错误捕获：后续任何脚本（含内嵌数据、三维引擎）出错，都把原因显示在加载界面上 */
+addEventListener('error', function(e){
+  var t=document.getElementById('loadtxt');
+  if(t) t.textContent='错误：'+(e.message||'脚本或资源加载失败')+'（请截图反馈）';
+});
+/* 页面加载结束但主程序没启动：多半是文件没下载完整（被中断或托管平台截断） */
+addEventListener('load', function(){ setTimeout(function(){
+  if(window.__appStarted) return;
+  var t=document.getElementById('loadtxt'), mb=(document.documentElement.outerHTML.length/1e6).toFixed(1);
+  if(t && !/^错误/.test(t.textContent)) t.textContent='错误：网页文件不完整，只收到约 '+mb+' MB（完整约 10.6 MB），请刷新或检查托管平台的文件大小限制';
+}, 800); });
+</script>
 
 <canvas id="stars"></canvas>
 <div id="stage"></div>
@@ -285,7 +298,7 @@
   <div class="ring"></div>
   <div id="loadpct">0%</div>
   <div class="loadbar"><i id="loadfill"></i></div>
-  <div id="loadtxt">正在装入内嵌 NASA GEBCO 数据…</div>
+  <div id="loadtxt">正在下载网页（约 10 MB，含全部离线数据），网速较慢时需要稍等…</div>
 </div>
 
 <script>console.warn('Scripts "build/three.js" and "build/three.min.js" are deprecated with r150+, and will be removed with r160. Please use ES Modules or alternatives: https://threejs.org/docs/index.html#manual/en/introduction/Installation'),
@@ -2024,6 +2037,7 @@ function setProgress(p,txt){
 const nextFrame=()=>new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
 
 async function main(){
+  window.__appStarted = true;
   setProgress(10,'正在解码内嵌地形数据…');
   const [landImg, seaImg, maskImg] = await Promise.all([
     loadDataImage(LAND_B64), loadDataImage(SEA_B64), loadDataImage(MASK_B64,'png')
@@ -2495,7 +2509,6 @@ animate(0);
 
 
 main().catch(e => fail(e && e.message || String(e)));
-addEventListener('error', e => fail(e.message || '脚本错误'));
 renderer.domElement.addEventListener('webglcontextlost', () => {
   document.getElementById('loader').classList.remove('off');
   fail('显卡内存不足，3D 画面已中断，请关闭其他标签页后刷新');
