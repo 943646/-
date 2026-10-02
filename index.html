@@ -2188,7 +2188,7 @@ function placeMarker(lat,lon){
 function flyTo(lat, lon, distOverride){
   lat=Math.max(-90,Math.min(90,lat));
   lon=((lon+180)%360+360)%360-180;
-  const dist = distOverride || Math.max(160, camera.position.length());
+  const dist = distOverride || camera.position.length();   // 保持当前缩放，不再拉回固定距离
   flyCam(lat, lon, dist, 1100);
   placeMarker(lat,lon);
 }
@@ -2475,6 +2475,11 @@ document.getElementById('dispSlider').oninput=e=>{
 /* ── 渲染循环 ── */
 function animate(t){
   requestAnimationFrame(animate);
+  /* 拖拽跟手：按相机到地表的距离换算每像素旋转角，使鼠标下的地表点随鼠标移动；
+     滚轮同理按离地高度缩放，贴近地表时不再一步冲太远 */
+  const dCam=camera.position.length(), hCam=dCam-R;
+  controls.rotateSpeed = hCam*Math.tan(camera.fov*DEG/2)/(Math.PI*R);
+  controls.zoomSpeed = Math.min(1, 1.5*hCam/dCam);
   controls.update();
   /* 光源跟随相机，使看向的半球始终被照亮（修复固定明暗面） */
   uniforms.uLight.value.copy(camera.position).normalize();
