@@ -387,7 +387,7 @@ const R = 100, DEG = Math.PI/180;
 
 /* ── 手机竖握横屏：#app 顺时针旋转 90°，屏幕坐标需换算成画面坐标 ── */
 const IS_TOUCH = matchMedia('(pointer:coarse)').matches;
-if(IS_TOUCH){ document.documentElement.classList.add('touch'); document.getElementById('iHint').textContent='点按地球查看海拔'; }
+if(IS_TOUCH){ document.documentElement.classList.add('touch'); document.getElementById('iHint').textContent='单击查看海拔，双击锁定'; }
 const ROT = { on:false, pref:true };
 try{ ROT.pref = localStorage.getItem('rotLandscape')!=='0'; }catch(e){}
 const appW = () => ROT.on ? innerHeight : innerWidth;   // 画面（旋转后）宽高
@@ -752,7 +752,7 @@ async function main(){
     makeLabels();
   }catch(e){ document.getElementById('loadtxt').textContent = '国界解析失败：'+e.message; }
 
-  setProgress(100, IS_TOUCH ? '就绪 · 完全离线 · 拖动旋转 / 双指缩放 / 点按查看' : '就绪 · 完全离线 · 拖拽旋转 / 滚轮缩放 / 悬停探测');
+  setProgress(100, IS_TOUCH ? '就绪 · 完全离线 · 拖动旋转 / 双指缩放 / 单击查看 / 双击锁定' : '就绪 · 完全离线 · 拖拽旋转 / 滚轮缩放 / 悬停探测');
   setTimeout(()=>document.getElementById('loader').classList.add('off'), 400);
 }
 function fail(msg){ const t=document.getElementById('loadtxt'); if(!/^错误/.test(t.textContent)) t.textContent = '错误：'+msg; }
@@ -1093,8 +1093,15 @@ renderer.domElement.addEventListener('mousemove', e=>{
   });
 });
 
-/* 触摸设备：点按探测（短时无位移轻点 = 探测并锁定） */
-let tStartX=0,tStartY=0,tStartTime=0;
+/* 屏幕中央的短暂提示 */
+function toast(msg, ms){
+  const h=document.getElementById('rotateHint');
+  h.textContent=msg; h.classList.add('show');
+  clearTimeout(toast.t); toast.t=setTimeout(()=>h.classList.remove('show'), ms||2200);
+}
+/* 触摸设备：单击 = 查看该点（相当于电脑的悬停）；双击 = 锁定该点。
+   已锁定时单击不会改变锁定的点，只给出提示 */
+let tStartX=0,tStartY=0,tStartTime=0, lastTap=null, tapTimer=0;
 renderer.domElement.addEventListener('touchstart', e=>{
   const t=e.touches[0]; tStartX=t.clientX; tStartY=t.clientY; tStartTime=performance.now();
 },{passive:true});
@@ -1103,8 +1110,20 @@ renderer.domElement.addEventListener('touchend', e=>{
   const dt=performance.now()-tStartTime;
   const dx=Math.abs(t.clientX-tStartX), dy=Math.abs(t.clientY-tStartY);
   if(dt<350 && dx<12 && dy<12){            // 轻点：非拖拽
-    const p=pick(t);
-    if(p){ lockTo(p.lat,p.lon); }          // 点按即锁定坐标并探测
+    const p=pick(t); if(!p) return;
+    const now=performance.now();
+    if(lastTap && now-lastTap.t<320 && Math.hypot(t.clientX-lastTap.x, t.clientY-lastTap.y)<30){
+      clearTimeout(tapTimer); lastTap=null;
+      lockTo(p.lat,p.lon);                  // 双击：锁定
+      return;
+    }
+    lastTap={ t:now, x:t.clientX, y:t.clientY };
+    clearTimeout(tapTimer);
+    tapTimer=setTimeout(()=>{               // 等待确认不是双击，再按单击处理
+      lastTap=null;
+      if(locked){ toast('已锁定：双击其他位置可换点，或点「选点锁定」解锁'); return; }
+      infoEl.classList.add('on'); updateInfo(p.lat,p.lon);
+    }, 320);
   }
 },{passive:true});
 
