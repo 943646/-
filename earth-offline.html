@@ -3,6 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+/* 尽早判断是否需要横屏旋转，避免加载时先显示竖屏（主程序加载完后会按实际尺寸精确设置） */
+(function(){
+  try{
+    var touch=matchMedia('(pointer:coarse)').matches, pref=true;
+    try{ pref=localStorage.getItem('rotLandscape')!=='0'; }catch(e){}
+    var c=document.documentElement.classList;
+    if(touch) c.add('touch');
+    if(touch && pref && innerHeight>innerWidth) c.add('rot');
+  }catch(e){}
+})();
+</script>
 <title>全球海拔与海深离线查询系统 · SRTM / GEBCO</title>
 <style>
   :root{
@@ -179,7 +191,7 @@
 
   /* ── 手机竖握时整体旋转 90°，以横屏布局显示（不依赖浏览器的横屏锁定） ── */
   #app{position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden}
-  html.rot #app{transform-origin:0 0}   /* 尺寸与 transform 由脚本按实际视口设置 */
+  html.rot #app{transform-origin:0 0;width:100vh;height:100vw;transform:translateX(100vw) rotate(90deg)}   /* 初始值，主程序再按实际视口像素精确设置 */
   #rotateHint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:90;
     background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 18px;
     font-size:14px;color:var(--accent);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .4s}
@@ -2166,6 +2178,14 @@ function featureBBox(g){
 }
 
 /* ── 国名标注：depthTest 开启，背面自动被地球遮挡 ── */
+const LABEL_GAP = .4;   // 标注离地高度（地球半径 = 100）
+const LABEL_PX = 20;    // 标注在屏幕上的高度（像素）
+/* sizeAttenuation:false 时精灵大小以视场为单位：换算成固定像素高度 */
+function updateLabelScale(){
+  const k = LABEL_PX/appH()*2*Math.tan(camera.fov*DEG/2);
+  labelGroup.children.forEach(sp=>sp.scale.set(k*sp.userData.aspect, k, 1));
+}
+addEventListener('appresize', ()=>updateLabelScale());
 function makeLabels(){
   gjFeatures.forEach(f=>{
     const name = f.properties.name;
@@ -2174,7 +2194,7 @@ function makeLabels(){
     if(!c) return;
     const display = ZH[name] || name;
     const cv = document.createElement('canvas');
-    const s=2, ctx=cv.getContext('2d');
+    const s=Math.min(3,Math.max(2,Math.ceil(devicePixelRatio||1))), ctx=cv.getContext('2d');
     ctx.font = `600 ${13*s}px "Noto Sans SC","Microsoft YaHei",sans-serif`;
     const tw = ctx.measureText(display).width + 16*s;
     cv.width=tw; cv.height=20*s;
@@ -2184,14 +2204,15 @@ function makeLabels(){
     ctx.fillStyle='#ffe2b0'; ctx.textBaseline='middle';
     ctx.fillText(display, 8*s, 10.5*s);
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({
-      map:new THREE.CanvasTexture(cv), transparent:true, depthTest:true }));
+      map:new THREE.CanvasTexture(cv), transparent:true, depthTest:false, sizeAttenuation:false }));   // 固定屏幕大小；遮挡改由朝向判断
     sp.userData.ll=[c[1],c[0]];
-    sp.position.copy(ll2v(c[1], c[0], surfR(c[1],c[0],4)));
-    sp.scale.set(tw/(20*s)*2.6, 2.6, 1);
+    sp.position.copy(ll2v(c[1], c[0], surfR(c[1],c[0],LABEL_GAP)));
+    sp.userData.aspect = tw/(20*s);
     sp.renderOrder=10;
     sp.userData.area = (f._bbox[2]-f._bbox[0])*(f._bbox[3]-f._bbox[1]);
     labelGroup.add(sp);
   });
+  updateLabelScale();
 }
 function roundRect(ctx,x,y,w,h,r){
   ctx.beginPath();
@@ -2483,7 +2504,7 @@ document.getElementById('lyBathy').onchange=e=>uniforms.uBathy.value=e.target.ch
 document.getElementById('lyAtmo').onchange=e=>atmo.visible=e.target.checked;
 document.getElementById('dispSlider').oninput=e=>{
   uniforms.uDisp.value=+e.target.value;
-  labelGroup.children.forEach(sp=>{ const [la,lo]=sp.userData.ll; sp.position.copy(ll2v(la,lo,surfR(la,lo,4))); });
+  labelGroup.children.forEach(sp=>{ const [la,lo]=sp.userData.ll; sp.position.copy(ll2v(la,lo,surfR(la,lo,LABEL_GAP))); });
   if(marker.userData.ll) placeMarker(...marker.userData.ll);
   document.getElementById('dispVal').textContent=(+e.target.value).toFixed(1)+'×';
 };
@@ -2585,9 +2606,15 @@ function animate(t){
   /* 光源跟随相机，使看向的半球始终被照亮（修复固定明暗面） */
   uniforms.uLight.value.copy(camera.position).normalize();
   const d=camera.position.length();
+  /* 标注：背面隐藏、靠近边缘淡出；离得越近显示越多小国 */
+  const minArea=60*Math.pow(hCam/200,2), cp=camera.position;
   labelGroup.children.forEach(sp=>{
-    const big=sp.userData.area>60;
-    sp.material.opacity = d>560 ? 0 : (big?1:(d<260?1:0));
+    const p=sp.position, pl=p.length();
+    const facing=(p.x*(cp.x-p.x)+p.y*(cp.y-p.y)+p.z*(cp.z-p.z))/(pl*cp.distanceTo(p));
+    const edge=Math.min(1,Math.max(0,(facing-.08)/.17));
+    const size=Math.min(1,Math.max(0,(sp.userData.area/minArea-.6)/.6));
+    const o = d>620 ? 0 : edge*size;
+    sp.material.opacity=o; sp.visible=o>.01;
   });
   if(marker.visible) marker.scale.setScalar(camera.position.distanceTo(marker.position)/PIN_REF);   // 红点屏幕大小恒定
   renderer.render(scene,camera);
