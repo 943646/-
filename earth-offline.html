@@ -41,6 +41,8 @@
   .fld input,.fld select{width:100%;background:rgba(20,45,68,.55);border:1px solid var(--line);
     border-radius:8px;color:var(--ink);font-weight:600;font-size:15px;padding:7px 10px;outline:none;transition:.25s}
   .fld select{font-size:12px;font-weight:500}
+  .hint{font-size:10.5px;color:var(--dim);line-height:1.5;margin:-4px 0 10px;opacity:.85}
+  .hint.err{color:var(--err);opacity:1}
   .fld input:focus,.fld select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(55,213,255,.15)}
   .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px}
   button{cursor:pointer;border:none;border-radius:8px;font-family:inherit;font-weight:500;
@@ -146,8 +148,8 @@
   #menuBtn,#menuClose{display:none;position:fixed;z-index:40;width:52px;height:52px;border-radius:50%;
     box-shadow:0 8px 24px rgba(55,213,255,.35);align-items:center;justify-content:center;
     font-size:22px;font-weight:700;color:#02121e;background:linear-gradient(120deg,#0e7fb8,#37d5ff)}
-  #menuBtn{right:16px;bottom:96px}
-  #menuClose{right:16px;bottom:16px;background:rgba(6,18,30,.9);border:1px solid var(--line);color:var(--accent)}
+  #menuBtn{left:16px;bottom:96px}
+  #menuClose{left:16px;bottom:16px;background:rgba(6,18,30,.9);border:1px solid var(--line);color:var(--accent)}
   @media(max-width:900px){
     #menuBtn{display:flex}
     #panel{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:74%;
@@ -194,9 +196,10 @@
     transform:translateX(calc(-100% - 16px));transition:transform .32s ease;border-radius:14px}
   html.short #panel.mobOpen{transform:none}
   html.short .pbody{padding:10px 12px 12px}
-  html.short #menuBtn{display:flex;right:14px;bottom:14px;width:46px;height:46px;font-size:20px}
-  html.short #panel.mobOpen ~ #menuClose{display:flex;right:14px;bottom:14px;width:46px;height:46px}
-  html.short #info{left:auto;right:72px;bottom:12px;transform:none;width:auto;min-width:0;max-width:calc(100% - 330px);
+  html.short #menuBtn{display:flex;left:14px;bottom:14px;width:46px;height:46px;font-size:20px}
+  #panel.mobOpen ~ #menuBtn{display:none !important}   /* 面板展开时只留关闭按钮 */
+  html.short #panel.mobOpen ~ #menuClose{display:flex;left:308px;bottom:14px;width:46px;height:46px}   /* 紧贴侧边栏右侧 */
+  html.short #info{left:auto;right:12px;top:10px;bottom:auto;transform:none;width:auto;min-width:0;max-width:calc(100% - 330px);
     gap:12px;padding:9px 14px}
   html.short #info.on{transform:none}
   html.short #info .country{font-size:15px}
@@ -236,9 +239,10 @@ addEventListener('load', function(){ setTimeout(function(){
   <div class="ph"><span class="dot"></span>定位控制台 · NAVIGATE</div>
   <div class="pbody">
     <div class="row">
-      <div class="fld"><label>纬度 LAT (-90~90)</label><input id="lat" type="number" value="30.57" step="0.01" min="-90" max="90"></div>
-      <div class="fld"><label>经度 LON (-180~180)</label><input id="lon" type="number" value="104.07" step="0.01" min="-180" max="180"></div>
+      <div class="fld"><label>纬度 LAT（度 °，北正南负）</label><input id="lat" type="text" value="30.57" placeholder="-90 ~ 90" autocomplete="off" spellcheck="false"></div>
+      <div class="fld"><label>经度 LON（度 °，东正西负）</label><input id="lon" type="text" value="104.07" placeholder="-180 ~ 180" autocomplete="off" spellcheck="false"></div>
     </div>
+    <div class="hint" id="coordMsg">可输入十进制度 30.57，或度分秒 30°34′12″N、30 34 12、北纬30°34′</div>
     <div class="btns">
       <button class="go" id="goBtn">⌖ 跳转到该坐标</button>
       <button class="ghost" id="homeBtn">复位视角</button>
@@ -2314,8 +2318,42 @@ function microStep(lat,lon){
   locked=true;
   updateInfo(lat,lon);
 }
-document.getElementById('goBtn').onclick = ()=>
-  lockTo(+document.getElementById('lat').value, +document.getElementById('lon').value);
+/* ── 坐标解析：十进制度，或度分秒（°′″ / ' " / 空格分隔），可带 N/S/E/W 或 北纬/南纬/东经/西经 ── */
+function parseCoord(str, isLat){
+  let t=String(str||'').trim().toUpperCase();
+  if(!t) return NaN;
+  let sign=1;
+  if(/^[-−–]/.test(t)){ sign=-1; t=t.replace(/^[-−–]\s*/,''); }
+  const hemi=t.match(/北纬|南纬|东经|西经|[NSEW北南东西]/g)||[];
+  if(hemi.length>1) return NaN;
+  if(hemi.length){
+    const h=hemi[0][0], latH='N S 北 南'.includes(h);
+    if(latH!==isLat) return NaN;                      // 纬度框只能用 N/S，经度框只能用 E/W
+    if('S南W西'.includes(h)) sign=-sign;
+  }
+  const nums=t.match(/\d+(?:\.\d+)?/g);
+  if(!nums || nums.length>3) return NaN;
+  const [d,m=0,s=0]=nums.map(Number);
+  if(nums.length>1 && (m>=60 || s>=60 || d%1)) return NaN;   // 有分秒时：度为整数，分秒 <60
+  const v=sign*(d+m/60+s/3600);
+  return Math.abs(v) <= (isLat?90:180) ? v : NaN;
+}
+function readCoordInputs(){
+  const lat=parseCoord(document.getElementById('lat').value,true);
+  const lon=parseCoord(document.getElementById('lon').value,false);
+  const msg=document.getElementById('coordMsg');
+  if(isNaN(lat)||isNaN(lon)){
+    msg.textContent = isNaN(lat) ? '纬度格式不对：应在 -90~90 度之间，如 30.57 或 30°34′12″N'
+                                 : '经度格式不对：应在 -180~180 度之间，如 104.07 或 104°4′12″E';
+    msg.classList.add('err'); return null;
+  }
+  msg.textContent='可输入十进制度 30.57，或度分秒 30°34′12″N、30 34 12、北纬30°34′'; msg.classList.remove('err');
+  return {lat,lon};
+}
+document.getElementById('goBtn').onclick = ()=>{ const c=readCoordInputs(); if(c) lockTo(c.lat,c.lon); };
+['lat','lon'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); document.getElementById('goBtn').click(); e.target.blur(); }
+}));
 document.getElementById('homeBtn').onclick = ()=>{ flyCam(20,0,300,1100); };
 let spinning=true;
 document.getElementById('spinBtn').onclick = e=>{
@@ -2391,8 +2429,8 @@ addEventListener('keydown', e=>{
   const ae=document.activeElement;
   if(ae && (ae.id==='lat'||ae.id==='lon')) return;   // 输入框聚焦时不干扰光标移动
   if(e.key==='Escape'){ locked=false; infoEl.classList.remove('on'); return; }
-  let lat=+document.getElementById('lat').value;
-  let lon=+document.getElementById('lon').value;
+  const c=readCoordInputs(); if(!c) return;
+  let {lat,lon}=c;
   const st=.01;
   switch(e.key){
     case 'ArrowUp': lat+=st; break;
@@ -2461,12 +2499,35 @@ document.getElementById('dispSlider').oninput=e=>{
   addEventListener('keydown', e=>{ if(e.key==='Escape') setOpen(false); });
 })();
 
+/* ── 旋转横屏时控制台的上下滑动：浏览器会按屏幕方向判断滑动，这里换算到画面方向后自行滚动 ── */
+(function(){
+  const panel=document.getElementById('panel');
+  let last=null, v=0, moved=false, raf=0;
+  panel.addEventListener('touchstart', e=>{
+    if(!ROT.on || e.target.type==='range') return;
+    cancelAnimationFrame(raf);
+    const t=e.touches[0]; last={ y:toApp(t.clientX,t.clientY).y, t:performance.now() }; moved=false; v=0;
+  }, {passive:true});
+  panel.addEventListener('touchmove', e=>{
+    if(!ROT.on || !last) return;
+    const t=e.touches[0], y=toApp(t.clientX,t.clientY).y, dy=y-last.y, now=performance.now();
+    if(!moved && Math.abs(dy)<6) return;              // 小位移视为点按
+    moved=true; e.preventDefault();
+    panel.scrollTop-=dy; v=dy/Math.max(8,now-last.t); last={y,t:now};
+  }, {passive:false});
+  panel.addEventListener('touchend', ()=>{
+    if(!last) return; last=null;
+    if(!moved) return;
+    (function fling(){ if(Math.abs(v)<.02) return; panel.scrollTop-=v*16; v*=.94; raf=requestAnimationFrame(fling); })();
+  });
+})();
+
 /* ── 方向微调按钮 / 解锁（移动端无键盘） ── */
 (function(){
   const DSTEP=.01;
   function nudge(d){
-    let lat=+document.getElementById('lat').value;
-    let lon=+document.getElementById('lon').value;
+    const c=readCoordInputs(); if(!c) return;
+    let {lat,lon}=c;
     if(d==='up')lat+=DSTEP; else if(d==='down')lat-=DSTEP;
     else if(d==='right')lon+=DSTEP; else if(d==='left')lon-=DSTEP;
     microStep(lat,lon);
