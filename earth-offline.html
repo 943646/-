@@ -26,7 +26,7 @@
 
   #panel{position:fixed;left:24px;top:78px;z-index:20;width:340px;background:var(--panel);
     border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(14px);overflow:hidden;
-    box-shadow:0 18px 50px rgba(0,0,0,.5);max-height:calc(100vh - 150px)}
+    box-shadow:0 18px 50px rgba(0,0,0,.5);max-height:calc(100% - 150px)}
   #panel::-webkit-scrollbar{display:none}
   #panel{scrollbar-width:none;scrollbar-color:transparent transparent;-ms-overflow-style:none}
   #panel .ph{display:flex;align-items:center;gap:8px;padding:12px 15px;border-bottom:1px solid var(--line);
@@ -150,7 +150,7 @@
   #menuClose{right:16px;bottom:16px;background:rgba(6,18,30,.9);border:1px solid var(--line);color:var(--accent)}
   @media(max-width:900px){
     #menuBtn{display:flex}
-    #panel{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:74vh;
+    #panel{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:74%;
       transform:translateY(calc(100% + 16px));transition:transform .32s ease;border-radius:14px}
     #panel.mobOpen{transform:translateY(0)}
     #panel.mobOpen ~ #menuClose{display:flex}
@@ -175,18 +175,32 @@
     .dbtn.unlock{grid-column:1/-1;color:var(--accent2);font-size:12.5px;letter-spacing:.1em}
   }
 
-  /* ── 竖屏旋转提示遮罩 ── */
-  #rotatePrompt{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
-    background:rgba(2,10,18,.78);backdrop-filter:blur(6px)}
-  #rotatePrompt.show{display:flex}
-  .rp-card{width:min(320px,86vw);background:var(--panel);border:1px solid var(--line);
-    border-radius:16px;padding:26px 22px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.6)}
-  .rp-icon{font-size:34px;margin-bottom:10px}
-  .rp-title{font-weight:700;font-size:19px;color:var(--accent);letter-spacing:.06em}
-  .rp-sub{font-size:12.5px;color:var(--dim);margin:8px 0 18px;line-height:1.6}
-  #rotatePrompt button{width:100%;margin-top:8px;padding:12px 0;border-radius:10px;font-weight:600;font-size:14px}
-  #rpLandscape{background:linear-gradient(120deg,#0e7fb8,#37d5ff);color:#02121e}
-  #rpPortrait{background:rgba(80,160,210,.12);border:1px solid var(--line);color:var(--dim)}
+  /* ── 手机竖握时整体旋转 90°，以横屏布局显示（不依赖浏览器的横屏锁定） ── */
+  #app{position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden}
+  html.rot #app{transform-origin:0 0}   /* 尺寸与 transform 由脚本按实际视口设置 */
+  #rotateHint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:90;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 18px;
+    font-size:14px;color:var(--accent);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .4s}
+  #rotateHint.show{opacity:1}
+  .touch-only{display:none}
+  html.touch .touch-only{display:flex}
+
+  /* ── 手机横屏（含竖握旋转）：屏幕矮，控制台改为左侧滑出、信息条放右下 ── */
+  html.short header{padding:8px 12px}
+  html.short .brand h1{font-size:17px}
+  html.short .brand .en{display:none}
+  html.short #srcpanel, html.short #legend, html.short #help, html.short #credit{display:none}
+  html.short #panel{left:8px;right:auto;top:8px;bottom:8px;width:290px;max-height:none;overflow-y:auto;
+    transform:translateX(calc(-100% - 16px));transition:transform .32s ease;border-radius:14px}
+  html.short #panel.mobOpen{transform:none}
+  html.short .pbody{padding:10px 12px 12px}
+  html.short #menuBtn{display:flex;right:14px;bottom:14px;width:46px;height:46px;font-size:20px}
+  html.short #panel.mobOpen ~ #menuClose{display:flex;right:14px;bottom:14px;width:46px;height:46px}
+  html.short #info{left:auto;right:72px;bottom:12px;transform:none;width:auto;min-width:0;max-width:calc(100% - 330px);
+    gap:12px;padding:9px 14px}
+  html.short #info.on{transform:none}
+  html.short #info .country{font-size:15px}
+  html.short #info .coord{display:none}
 </style>
 </head>
 <body>
@@ -207,6 +221,7 @@ addEventListener('load', function(){ setTimeout(function(){
 }, 800); });
 </script>
 
+<div id="app">
 <canvas id="stars"></canvas>
 <div id="stage"></div>
 
@@ -237,6 +252,7 @@ addEventListener('load', function(){ setTimeout(function(){
       <label class="tg">陆地地形分层设色<input type="checkbox" id="lyHypso" checked><span class="sw"></span></label>
       <label class="tg">海洋深度渐变蓝色<input type="checkbox" id="lyBathy" checked><span class="sw"></span></label>
       <label class="tg">大气辉光<input type="checkbox" id="lyAtmo" checked><span class="sw"></span></label>
+      <label class="tg touch-only">手机竖握时横屏显示<input type="checkbox" id="lyRotate" checked><span class="sw"></span></label>
       <div class="sld">地形立体夸张度 <span id="dispVal">1.2×</span>
         <input type="range" id="dispSlider" min="0" max="3" step="0.1" value="1.2"></div>
     </div>
@@ -292,15 +308,7 @@ addEventListener('load', function(){ setTimeout(function(){
 <button id="menuBtn" title="打开控制台">☰</button>
 <button id="menuClose" title="收起控制台">✕</button>
 
-<div id="rotatePrompt">
-  <div class="rp-card">
-    <div class="rp-icon">📱⟳</div>
-    <div class="rp-title">建议横屏查看</div>
-    <div class="rp-sub">横屏视野更开阔，与桌面端体验一致</div>
-    <button id="rpLandscape">切换到横屏</button>
-    <button class="rp-ghost" id="rpPortrait">竖屏继续</button>
-  </div>
-</div>
+<div id="rotateHint">📱 请横握手机，体验与电脑端一致</div>
 
 <div id="loader">
   <div class="ring"></div>
@@ -308,6 +316,7 @@ addEventListener('load', function(){ setTimeout(function(){
   <div class="loadbar"><i id="loadfill"></i></div>
   <div id="loadtxt">正在装入内嵌离线数据，网速较慢时需要稍等…</div>
 </div>
+</div><!-- /#app -->
 
 <script>console.warn('Scripts "build/three.js" and "build/three.min.js" are deprecated with r150+, and will be removed with r160. Please use ES Modules or alternatives: https://threejs.org/docs/index.html#manual/en/introduction/Installation'),
 /**
@@ -1314,6 +1323,8 @@ class OrbitControls extends EventDispatcher {
 
 			//
 
+			if ( scope.mapPointer ) event = scope.mapPointer( event );   // 页面旋转时换算坐标
+
 			addPointer( event );
 
 			if ( event.pointerType === 'touch' ) {
@@ -1331,6 +1342,8 @@ class OrbitControls extends EventDispatcher {
 		function onPointerMove( event ) {
 
 			if ( scope.enabled === false ) return;
+
+			if ( scope.mapPointer ) event = scope.mapPointer( event );
 
 			if ( event.pointerType === 'touch' ) {
 
@@ -1743,6 +1756,15 @@ const ASSETS = {
    ══════════════════════════════════════════════════════════ */
 const R = 100, DEG = Math.PI/180;
 
+/* ── 手机竖握横屏：#app 顺时针旋转 90°，屏幕坐标需换算成画面坐标 ── */
+const IS_TOUCH = matchMedia('(pointer:coarse)').matches;
+if(IS_TOUCH) document.documentElement.classList.add('touch');
+const ROT = { on:false, pref:true };
+try{ ROT.pref = localStorage.getItem('rotLandscape')!=='0'; }catch(e){}
+const appW = () => ROT.on ? innerHeight : innerWidth;   // 画面（旋转后）宽高
+const appH = () => ROT.on ? innerWidth : innerHeight;
+function toApp(x,y){ return ROT.on ? { x:y, y:innerWidth-x } : { x, y }; }
+
 /* ── 内嵌数据状态面板 ── */
 const SOURCES = [
   { label:'地形海拔 0~8850m (SRTM · GMTED · ETOPO1)', ok:true },
@@ -1784,12 +1806,12 @@ async function loadCountries(src){
 
 /* ── Three.js 场景（全局 THREE，来自内嵌 UMD） ── */
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, .1, 5000);
+const camera = new THREE.PerspectiveCamera(42, appW()/appH(), .1, 5000);
 camera.position.set(0, 60, 300);
 const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
+renderer.setSize(appW(), appH());
 document.getElementById('stage').appendChild(renderer.domElement);
 
 /* 贴图尺寸上限：超大贴图解码后每张约 230MB 显存，手机/弱显卡会崩溃白屏，按设备缩小 */
@@ -1804,15 +1826,22 @@ controls.enableDamping = true; controls.dampingFactor = .06;
 controls.minDistance = 116; controls.maxDistance = 900;
 controls.autoRotate = true; controls.autoRotateSpeed = .45;
 controls.enablePan = false;
+controls.mapPointer = e => {
+  if(!ROT.on) return e;
+  const q=toApp(e.clientX,e.clientY);
+  return { pointerId:e.pointerId, pointerType:e.pointerType, button:e.button,
+    ctrlKey:e.ctrlKey, metaKey:e.metaKey, shiftKey:e.shiftKey,
+    clientX:q.x, clientY:q.y, pageX:q.x, pageY:q.y, preventDefault:()=>e.preventDefault() };
+};
 
 /* 星空 */
 (function(){
   const c = document.getElementById('stars'), x = c.getContext('2d');
   let st = [];
-  function resize(){ c.width=innerWidth; c.height=innerHeight;
+  function resize(){ c.width=appW(); c.height=appH();
     st = Array.from({length:260},()=>({x:Math.random()*c.width,y:Math.random()*c.height,
       r:Math.random()*1.3+.2,p:Math.random()*Math.PI*2,s:.4+Math.random()*1.4})); }
-  resize(); addEventListener('resize', resize);
+  resize(); addEventListener('appresize', resize);
   let last=-1e9;   // 闪烁约 15 帧/秒即可，省 CPU
   (function draw(t){ requestAnimationFrame(draw);
     if(t-last<66) return; last=t;
@@ -2312,8 +2341,9 @@ spots.forEach(s=>{
 /* ── 拾取与悬停探测 ── */
 const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
 function pick(e){
-  mouse.x=(e.clientX/innerWidth)*2-1;
-  mouse.y=-(e.clientY/innerHeight)*2+1;
+  const q=toApp(e.clientX,e.clientY);
+  mouse.x=(q.x/appW())*2-1;
+  mouse.y=-(q.y/appH())*2+1;
   ray.setFromCamera(mouse,camera);
   const hit=ray.intersectObject(earth)[0];
   if(!hit) return null;
@@ -2449,57 +2479,35 @@ document.getElementById('dispSlider').oninput=e=>{
   };
 })();
 
-/* ── 竖屏自适应 / 横屏请求 ── */
+/* ── 横竖屏：手机竖握时整体旋转为横屏布局；横握或电脑端正常显示 ── */
 (function(){
-  const rp=document.getElementById('rotatePrompt');
-  const rpTitle=rp.querySelector('.rp-title');
-  const rpSub=rp.querySelector('.rp-sub');
-  const rpLandBtn=document.getElementById('rpLandscape');
-  const isTouch = matchMedia('(pointer:coarse)').matches;
-  const isPortrait = ()=> innerHeight>innerWidth;
-  let dismissed=false;   // 用户明确选择"竖屏继续"后不再打扰
-
-  function tryLandscape(){
-    const el=document.documentElement;
-    let fs=Promise.resolve();
-    if(el.requestFullscreen) fs=el.requestFullscreen().catch(()=>{});
-    else if(el.webkitRequestFullscreen){ try{el.webkitRequestFullscreen();}catch(e){} }
-    return fs.then(()=>{
-      if(screen.orientation && screen.orientation.lock)
-        return screen.orientation.lock('landscape').catch(()=>{});
-    }).catch(()=>{});
-  }
-
-  rpLandBtn.onclick=()=>{
-    rp.classList.remove('show');
-    tryLandscape();
-    /* 全屏+锁定不一定成功：短暂后若仍竖屏，提示手动旋转 */
-    setTimeout(()=>{
-      if(isPortrait()){
-        rpTitle.textContent='请手动横置设备';
-        rpSub.textContent='浏览器无法自动锁定横屏，请旋转手机后横屏展示';
-        rpLandBtn.style.display='none';
-        rp.classList.add('show');
-      }
-    }, 900);
-  };
-  document.getElementById('rpPortrait').onclick=()=>{
-    rp.classList.remove('show'); dismissed=true;
-  };
-  document.getElementById('menuBtn').addEventListener('click', ()=>{ dismissed=true; rp.classList.remove('show'); });
-
-  /* 竖屏：加大 FOV 让球体完整显示；宽屏恢复默认 */
+  const app=document.getElementById('app'), hint=document.getElementById('rotateHint');
+  let hintShown=false;
   function applyAspect(){
-    camera.aspect=innerWidth/innerHeight;
-    camera.fov = camera.aspect<1 ? 58 : 42;
+    ROT.on = IS_TOUCH && ROT.pref && innerHeight>innerWidth;
+    document.documentElement.classList.toggle('rot', ROT.on);
+    document.documentElement.classList.toggle('short', IS_TOUCH && appH() < 520);   // 手机横屏布局
+    if(ROT.on){
+      app.style.width=innerHeight+'px'; app.style.height=innerWidth+'px';
+      app.style.transform=`translateX(${innerWidth}px) rotate(90deg)`;
+      if(!hintShown){ hintShown=true; hint.classList.add('show'); setTimeout(()=>hint.classList.remove('show'),2600); }
+    }else{
+      app.style.width=app.style.height=app.style.transform='';
+    }
+    camera.aspect=appW()/appH();
+    camera.fov = camera.aspect<1 ? 58 : 42;   // 竖屏（关闭横屏显示时）加大视场，球体完整可见
     camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth,innerHeight);
-    if(isTouch && isPortrait() && !dismissed) rp.classList.add('show');
-    else rp.classList.remove('show');
+    renderer.setSize(appW(),appH());
+    dispatchEvent(new Event('appresize'));
   }
   window.__applyAspect = applyAspect;
-
-  addEventListener('orientationchange', applyAspect);
+  document.getElementById('lyRotate').onchange=e=>{
+    ROT.pref=e.target.checked;
+    try{ localStorage.setItem('rotLandscape', ROT.pref?'1':'0'); }catch(err){}
+    applyAspect();
+  };
+  document.getElementById('lyRotate').checked=ROT.pref;
+  addEventListener('orientationchange', ()=>setTimeout(applyAspect,200));
   addEventListener('resize', applyAspect);
   applyAspect();   // 初次应用
 })();
