@@ -53,6 +53,7 @@
   .fld input,.fld select{width:100%;background:rgba(20,45,68,.55);border:1px solid var(--line);
     border-radius:8px;color:var(--ink);font-weight:600;font-size:15px;padding:7px 10px;outline:none;transition:.25s}
   .fld select{font-size:12px;font-weight:500}
+  .fld label small{display:block;font-size:10px;letter-spacing:.04em;opacity:.75;margin-top:2px;white-space:nowrap}
   .hint{font-size:10.5px;color:var(--dim);line-height:1.5;margin:-4px 0 10px;opacity:.85}
   .hint.err{color:var(--err);opacity:1}
   .fld input:focus,.fld select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(55,213,255,.15)}
@@ -178,16 +179,17 @@
     #info .coord{font-size:11px}
   }
 
-  /* ── 方向微调区（移动端显示，桌面隐藏） ── */
-  .dirsec{display:none}
-  @media(max-width:900px){
-    .dirsec{display:block;margin-top:14px;padding-top:13px;border-top:1px solid var(--line)}
-    .dirpad{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
-    .dbtn{background:rgba(80,160,210,.12);border:1px solid var(--line);color:var(--ink);
-      font-size:16px;padding:10px 0;border-radius:8px}
-    .dbtn:active{background:rgba(55,213,255,.25)}
-    .dbtn.unlock{grid-column:1/-1;color:var(--accent2);font-size:12.5px;letter-spacing:.1em}
-  }
+  /* ── 方向微调区：触屏设备与窄屏显示（桌面用方向键），紧跟在跳转按钮下方 ── */
+  .dirsec{display:none;margin-top:10px}
+  @media(max-width:900px){ .dirsec{display:block} }
+  html.touch .dirsec{display:block}
+  .dirsec .lt{font-size:10px;color:var(--dim);letter-spacing:.14em;font-weight:500}
+  .dirpad{display:grid;grid-template-columns:repeat(4,1fr) 1.6fr;gap:6px;margin-top:6px}
+  .dbtn{background:rgba(80,160,210,.12);border:1px solid var(--line);color:var(--ink);
+    font-size:15px;padding:8px 0;border-radius:8px}
+  .dbtn:active{background:rgba(55,213,255,.25)}
+  .dbtn.unlock{color:var(--accent2);font-size:12px;letter-spacing:.04em}
+  .dbtn.unlock.on{background:rgba(255,180,84,.28);border-color:var(--accent2);color:#ffe2b0}
 
   /* ── 手机竖握时整体旋转 90°，以横屏布局显示（不依赖浏览器的横屏锁定） ── */
   #app{position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden}
@@ -211,7 +213,7 @@
   html.short #menuBtn{display:flex;left:14px;bottom:14px;width:46px;height:46px;font-size:20px}
   #panel.mobOpen ~ #menuBtn{display:none !important}   /* 面板展开时只留关闭按钮 */
   html.short #panel.mobOpen ~ #menuClose{display:flex;left:308px;bottom:14px;width:46px;height:46px}   /* 紧贴侧边栏右侧 */
-  html.short #info{left:auto;right:12px;top:10px;bottom:auto;transform:none;width:auto;min-width:0;max-width:calc(100% - 330px);
+  html.short #info{left:auto;right:12px;bottom:12px;top:auto;transform:none;width:auto;min-width:0;max-width:calc(100% - 330px);
     gap:12px;padding:9px 14px}
   html.short #info.on{transform:none}
   html.short #info .country{font-size:15px}
@@ -251,8 +253,8 @@ addEventListener('load', function(){ setTimeout(function(){
   <div class="ph"><span class="dot"></span>定位控制台 · NAVIGATE</div>
   <div class="pbody">
     <div class="row">
-      <div class="fld"><label>纬度 LAT（度 °，北正南负）</label><input id="lat" type="text" value="30.57" placeholder="-90 ~ 90" autocomplete="off" spellcheck="false"></div>
-      <div class="fld"><label>经度 LON（度 °，东正西负）</label><input id="lon" type="text" value="104.07" placeholder="-180 ~ 180" autocomplete="off" spellcheck="false"></div>
+      <div class="fld"><label>纬度 LAT<small>单位：度 ° · 北正南负</small></label><input id="lat" type="text" value="30.57" placeholder="-90 ~ 90" autocomplete="off" spellcheck="false"></div>
+      <div class="fld"><label>经度 LON<small>单位：度 ° · 东正西负</small></label><input id="lon" type="text" value="104.07" placeholder="-180 ~ 180" autocomplete="off" spellcheck="false"></div>
     </div>
     <div class="hint" id="coordMsg">可输入十进制度 30.57，或度分秒 30°34′12″N、30 34 12、北纬30°34′</div>
     <div class="btns">
@@ -260,27 +262,27 @@ addEventListener('load', function(){ setTimeout(function(){
       <button class="ghost" id="homeBtn">复位视角</button>
       <button class="ghost" id="spinBtn">停止旋转</button>
     </div>
+    <div class="dirsec">
+      <div class="lt">坐标微调 · NUDGE（每次 0.01°）</div>
+      <div class="dirpad">
+        <button class="dbtn" data-d="left" title="向西">◀</button>
+        <button class="dbtn" data-d="up" title="向北">▲</button>
+        <button class="dbtn" data-d="down" title="向南">▼</button>
+        <button class="dbtn" data-d="right" title="向东">▶</button>
+        <button class="dbtn unlock" id="unlockBtn" title="锁定当前坐标；再点一下解锁">选点锁定</button>
+      </div>
+    </div>
     <div class="chips" id="chips"></div>
     <div class="layers">
       <div class="lt">图层叠加 · LAYERS</div>
       <label class="tg">国界线<input type="checkbox" id="lyBorders" checked><span class="sw"></span></label>
-      <label class="tg">国家名称标注<input type="checkbox" id="lyLabels" checked><span class="sw"></span></label>
+      <label class="tg">国家或地区标注<input type="checkbox" id="lyLabels" checked><span class="sw"></span></label>
       <label class="tg">陆地地形分层设色<input type="checkbox" id="lyHypso" checked><span class="sw"></span></label>
       <label class="tg">海洋深度渐变蓝色<input type="checkbox" id="lyBathy" checked><span class="sw"></span></label>
       <label class="tg">大气辉光<input type="checkbox" id="lyAtmo" checked><span class="sw"></span></label>
       <label class="tg touch-only">手机竖握时横屏显示<input type="checkbox" id="lyRotate" checked><span class="sw"></span></label>
       <div class="sld">地形立体夸张度 <span id="dispVal">1.2×</span>
         <input type="range" id="dispSlider" min="0" max="3" step="0.1" value="1.2"></div>
-    </div>
-    <div class="dirsec">
-      <div class="lt">坐标微调 · NUDGE (0.01°)</div>
-      <div class="dirpad">
-        <button class="dbtn" data-d="up">▲</button>
-        <button class="dbtn" data-d="left">◀</button>
-        <button class="dbtn" data-d="down">▼</button>
-        <button class="dbtn" data-d="right">▶</button>
-        <button class="dbtn unlock" id="unlockBtn">解锁</button>
-      </div>
     </div>
   </div>
 </div>
@@ -2122,7 +2124,14 @@ async function main(){
   setProgress(75,'正在解析 Natural Earth 国界…'); await nextFrame();
   try{
     gjFeatures = topoToFeatures(topo, 'countries');
-    gjFeatures.forEach(f => f._bbox = featureBBox(f.geometry));
+    gjFeatures.forEach(f => {
+      f._bbox = featureBBox(f.geometry);
+      const polys = f.geometry.type==='Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+      polys.forEach(pl=>pl.forEach(r=>{   // 标记跨 180° 经线的环，并备好归一化到 [0,360) 的副本
+        let a=1e9,b=-1e9; r.forEach(p=>{ a=Math.min(a,p[0]); b=Math.max(b,p[0]); });
+        if(b-a>180){ r._cross=true; r._n=r.map(p=>[p[0]<0?p[0]+360:p[0],p[1]]); }
+      }));
+    });
     drawBorders(borderGroup, gjFeatures);
     makeLabels();
   }catch(e){ document.getElementById('loadtxt').textContent = '国界解析失败: '+e.message; }
@@ -2219,26 +2228,55 @@ function roundRect(ctx,x,y,w,h,r){
   ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
   ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
 }
+/* 环面积（经纬度平面，带符号） */
+function ringArea(r){ let a=0; for(let i=0,j=r.length-1;i<r.length;j=i++) a+=(r[j][0]-r[i][0])*(r[j][1]+r[i][1]); return a/2; }
+/* 点到多边形（含洞）边界的带符号距离：内部为正 */
+function polyDist(x,y,poly){
+  let inside=false, min=Infinity;
+  for(const ring of poly){
+    for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+      const a=ring[i], b=ring[j];
+      if((a[1]>y)!==(b[1]>y) && x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]) inside=!inside;
+      let px=b[0], py=b[1], dx=a[0]-px, dy=a[1]-py;
+      if(dx||dy){ const t=((x-px)*dx+(y-py)*dy)/(dx*dx+dy*dy); if(t>1){px=a[0];py=a[1];} else if(t>0){px+=dx*t;py+=dy*t;} }
+      dx=x-px; dy=y-py; min=Math.min(min,dx*dx+dy*dy);
+    }
+  }
+  return (inside?1:-1)*Math.sqrt(min);
+}
+/* polylabel：多边形内部离边界最远的点（适合细长、弯曲的国家，如越南、智利、挪威） */
+function polylabel(poly, precision){
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  for(const p of poly[0]){ minX=Math.min(minX,p[0]); minY=Math.min(minY,p[1]); maxX=Math.max(maxX,p[0]); maxY=Math.max(maxY,p[1]); }
+  const w=maxX-minX, h=maxY-minY, size=Math.min(w,h);
+  if(!size) return [minX,minY];
+  const cell=(x,y,hh)=>{ const d=polyDist(x,y,poly); return {x,y,h:hh,d,max:d+hh*Math.SQRT2}; };
+  const q=[];
+  for(let x=minX;x<maxX;x+=size) for(let y=minY;y<maxY;y+=size) q.push(cell(x+size/2,y+size/2,size/2));
+  let best=cell(minX+w/2,minY+h/2,0);
+  for(let n=0; q.length && n<4000; n++){
+    let bi=0; for(let i=1;i<q.length;i++) if(q[i].max>q[bi].max) bi=i;
+    const c=q[bi]; q[bi]=q[q.length-1]; q.pop();
+    if(c.d>best.d) best=c;
+    if(c.max-best.d<=precision) continue;
+    const hh=c.h/2;
+    q.push(cell(c.x-hh,c.y-hh,hh),cell(c.x+hh,c.y-hh,hh),cell(c.x-hh,c.y+hh,hh),cell(c.x+hh,c.y+hh,hh));
+  }
+  return [best.x,best.y];
+}
 function centroid(g){
   const polys = g.type==='Polygon' ? [g.coordinates] : g.coordinates;
   let best=null, bestA=-1;
-  polys.forEach(pl=>{
-    const r=pl[0];
-    let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
-    r.forEach(p=>{minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);
-      minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);});
-    const a=(maxX-minX)*(maxY-minY);
-    if(a>bestA){bestA=a;best=r;}
-  });
+  polys.forEach(pl=>{ const a=Math.abs(ringArea(pl[0])); if(a>bestA){ bestA=a; best=pl; } });   // 取面积最大的一块
   if(!best) return null;
-  // 跨 180° 经线时把所有经度归一化到 [0,360) 再平均，避免质心被拉到对侧半球
-  let minX=1e9,maxX=-1e9;
-  best.forEach(p=>{minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);});
-  const cross=(maxX-minX)>180;
-  let sx=0,sy=0;
-  best.forEach(p=>{ let x=p[0]; if(cross&&x<0)x+=360; sx+=x; sy+=p[1]; });
-  let lon=sx/best.length; if(lon>180)lon-=360;
-  return [lon, sy/best.length];
+  // 跨 180° 经线时经度归一化到 [0,360)；经度按纬度余弦压缩，减小高纬度变形
+  let minX=1e9,maxX=-1e9,sy=0;
+  best[0].forEach(p=>{ minX=Math.min(minX,p[0]); maxX=Math.max(maxX,p[0]); sy+=p[1]; });
+  const cross=(maxX-minX)>180, k=Math.max(.2,Math.cos(sy/best[0].length*DEG));
+  const P=best.map(r=>r.map(p=>[((cross&&p[0]<0)?p[0]+360:p[0])*k, p[1]]));
+  const [x,y]=polylabel(P, .02);
+  let lon=x/k; if(lon>180) lon-=360;
+  return [lon, y];
 }
 
 /* ── 定位标记 ── */
@@ -2279,6 +2317,15 @@ function flyTo(lat, lon, distOverride){
   placeMarker(lat,lon);
 }
 let locked=false;
+/* 锁定状态：按钮「选点锁定」高亮表示已锁定，再点一下解锁 */
+function setLocked(v){
+  locked=v;
+  const b=document.getElementById('unlockBtn');
+  b.classList.toggle('on',v);
+  b.textContent = v ? '🔒 选点锁定' : '选点锁定';
+  b.title = v ? '已锁定当前坐标，点一下解锁' : '锁定当前坐标；再点一下解锁';
+  if(!v) infoEl.classList.remove('on');
+}
 function fmtM(v){ v=Math.round(v); return (v>0?'+':'')+v+' m'; }
 function showElev(el){
   const b=document.getElementById('iElev');
@@ -2325,7 +2372,7 @@ function lockTo(lat,lon){
   document.getElementById('lat').value=+lat.toFixed(4);
   document.getElementById('lon').value=+lon.toFixed(4);
   flyTo(lat,lon);
-  locked=true;
+  setLocked(true);
   infoEl.classList.add('on');      // 锁定后立即显示信息条
   updateInfo(lat,lon);
 }
@@ -2336,7 +2383,7 @@ function microStep(lat,lon){
   document.getElementById('lon').value=+lon.toFixed(4);
   flyCam(lat, lon, camera.position.length(), 180);
   placeMarker(lat,lon);
-  locked=true;
+  setLocked(true);
   updateInfo(lat,lon);
 }
 /* ── 坐标解析：十进制度，或度分秒（°′″ / ' " / 空格分隔），可带 N/S/E/W 或 北纬/南纬/东经/西经 ── */
@@ -2449,7 +2496,7 @@ renderer.domElement.addEventListener('touchend', e=>{
 addEventListener('keydown', e=>{
   const ae=document.activeElement;
   if(ae && (ae.id==='lat'||ae.id==='lon')) return;   // 输入框聚焦时不干扰光标移动
-  if(e.key==='Escape'){ locked=false; infoEl.classList.remove('on'); return; }
+  if(e.key==='Escape'){ setLocked(false); return; }
   const c=readCoordInputs(); if(!c) return;
   let {lat,lon}=c;
   const st=.01;
@@ -2488,6 +2535,7 @@ function countryAt(lat,lon){
   return null;
 }
 function inRing(x,y,ring){
+  if(ring._cross){ ring=ring._n; if(x<0) x+=360; }
   let inside=false;
   for(let i=0,j=ring.length-1;i<ring.length;j=i++){
     const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];
@@ -2543,6 +2591,19 @@ document.getElementById('dispSlider').oninput=e=>{
   });
 })();
 
+/* ── 旋转横屏时滑块拖动：浏览器按屏幕方向识别，改为按画面方向换算数值 ── */
+document.querySelectorAll('#panel input[type=range]').forEach(el=>{
+  function setFrom(t){
+    const r=el.getBoundingClientRect();              // 屏幕上的矩形；旋转后画面的 x 对应屏幕的 y
+    const f=Math.min(1,Math.max(0,(toApp(t.clientX,t.clientY).x - r.top)/(r.bottom-r.top)));
+    const min=+el.min, max=+el.max, step=+el.step||1;
+    const v=Math.round((min+f*(max-min))/step)*step;
+    if(+el.value!==v){ el.value=v; el.dispatchEvent(new Event('input',{bubbles:true})); }
+  }
+  el.addEventListener('touchstart', e=>{ if(!ROT.on) return; e.preventDefault(); setFrom(e.touches[0]); }, {passive:false});
+  el.addEventListener('touchmove',  e=>{ if(!ROT.on) return; e.preventDefault(); setFrom(e.touches[0]); }, {passive:false});
+});
+
 /* ── 方向微调按钮 / 解锁（移动端无键盘） ── */
 (function(){
   const DSTEP=.01;
@@ -2557,7 +2618,8 @@ document.getElementById('dispSlider').oninput=e=>{
     b.addEventListener('click', ()=>nudge(b.dataset.d));
   });
   document.getElementById('unlockBtn').onclick=()=>{
-    locked=false; infoEl.classList.remove('on');
+    if(locked){ setLocked(false); return; }
+    const c=readCoordInputs(); if(c) lockTo(c.lat,c.lon);   // 未锁定时：锁定到输入框里的坐标
   };
 })();
 
