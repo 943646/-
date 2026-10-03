@@ -189,6 +189,7 @@
     font-size:15px;padding:8px 0;border-radius:8px}
   .dbtn:active{background:rgba(55,213,255,.25)}
   .dbtn.unlock{color:var(--accent2);font-size:12px;letter-spacing:.04em}
+  .dbtn.unlock.on{background:rgba(255,180,84,.28);border-color:var(--accent2);color:#ffe2b0}
 
   /* ── 手机竖握时整体旋转 90°，以横屏布局显示（不依赖浏览器的横屏锁定） ── */
   #app{position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden}
@@ -268,7 +269,7 @@ addEventListener('load', function(){ setTimeout(function(){
         <button class="dbtn" data-d="up" title="向北">▲</button>
         <button class="dbtn" data-d="down" title="向南">▼</button>
         <button class="dbtn" data-d="right" title="向东">▶</button>
-        <button class="dbtn unlock" id="unlockBtn" title="取消锁定的坐标，恢复跟随手指/鼠标探测">取消锁定</button>
+        <button class="dbtn unlock" id="unlockBtn" title="锁定当前坐标；再点一下解锁">选点锁定</button>
       </div>
     </div>
     <div class="chips" id="chips"></div>
@@ -2316,6 +2317,15 @@ function flyTo(lat, lon, distOverride){
   placeMarker(lat,lon);
 }
 let locked=false;
+/* 锁定状态：按钮「选点锁定」高亮表示已锁定，再点一下解锁 */
+function setLocked(v){
+  locked=v;
+  const b=document.getElementById('unlockBtn');
+  b.classList.toggle('on',v);
+  b.textContent = v ? '🔒 选点锁定' : '选点锁定';
+  b.title = v ? '已锁定当前坐标，点一下解锁' : '锁定当前坐标；再点一下解锁';
+  if(!v) infoEl.classList.remove('on');
+}
 function fmtM(v){ v=Math.round(v); return (v>0?'+':'')+v+' m'; }
 function showElev(el){
   const b=document.getElementById('iElev');
@@ -2362,7 +2372,7 @@ function lockTo(lat,lon){
   document.getElementById('lat').value=+lat.toFixed(4);
   document.getElementById('lon').value=+lon.toFixed(4);
   flyTo(lat,lon);
-  locked=true;
+  setLocked(true);
   infoEl.classList.add('on');      // 锁定后立即显示信息条
   updateInfo(lat,lon);
 }
@@ -2373,7 +2383,7 @@ function microStep(lat,lon){
   document.getElementById('lon').value=+lon.toFixed(4);
   flyCam(lat, lon, camera.position.length(), 180);
   placeMarker(lat,lon);
-  locked=true;
+  setLocked(true);
   updateInfo(lat,lon);
 }
 /* ── 坐标解析：十进制度，或度分秒（°′″ / ' " / 空格分隔），可带 N/S/E/W 或 北纬/南纬/东经/西经 ── */
@@ -2486,7 +2496,7 @@ renderer.domElement.addEventListener('touchend', e=>{
 addEventListener('keydown', e=>{
   const ae=document.activeElement;
   if(ae && (ae.id==='lat'||ae.id==='lon')) return;   // 输入框聚焦时不干扰光标移动
-  if(e.key==='Escape'){ locked=false; infoEl.classList.remove('on'); return; }
+  if(e.key==='Escape'){ setLocked(false); return; }
   const c=readCoordInputs(); if(!c) return;
   let {lat,lon}=c;
   const st=.01;
@@ -2608,7 +2618,8 @@ document.querySelectorAll('#panel input[type=range]').forEach(el=>{
     b.addEventListener('click', ()=>nudge(b.dataset.d));
   });
   document.getElementById('unlockBtn').onclick=()=>{
-    locked=false; infoEl.classList.remove('on');
+    if(locked){ setLocked(false); return; }
+    const c=readCoordInputs(); if(c) lockTo(c.lat,c.lon);   // 未锁定时：锁定到输入框里的坐标
   };
 })();
 
