@@ -193,7 +193,9 @@
   .dbtn.unlock.on{background:rgba(255,180,84,.28);border-color:var(--accent2);color:#ffe2b0}
 
   /* ── 手机竖握时整体旋转 90°，以横屏布局显示（不依赖浏览器的横屏锁定） ── */
-  #app{position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden}
+  #app{position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden;
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+  #app input{-webkit-user-select:text;user-select:text}   /* 输入框仍可选中、编辑 */
   html.rot #app{transform-origin:0 0;width:100vh;height:100vw;transform:translateX(100vw) rotate(90deg)}   /* 初始值，主程序再按实际视口像素精确设置 */
   #rotateHint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:90;
     background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 18px;
@@ -2633,6 +2635,10 @@ document.querySelectorAll('#panel input[type=range]').forEach(el=>{
     });
     ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev, stop));
     b.addEventListener('contextmenu', e=>e.preventDefault());   // 长按不弹系统菜单
+    /* 安卓长按约 0.5 秒会被浏览器接管（选字/复制菜单）并取消指针事件，导致连发中断：
+       在 touchstart 上阻止默认行为，浏览器就不会再进入长按流程 */
+    b.addEventListener('touchstart', e=>e.preventDefault(), {passive:false});
+    b.addEventListener('touchend', e=>{ e.preventDefault(); stop(); }, {passive:false});
   });
   document.getElementById('unlockBtn').onclick=()=>{
     if(locked){ setLocked(false); return; }
