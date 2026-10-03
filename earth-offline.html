@@ -231,7 +231,8 @@
   html.short #panel .ph{position:sticky;top:0;z-index:2;background:rgba(6,18,30,.97)}
   html.short #info{left:72px;right:12px;bottom:12px;top:auto;transform:none;width:auto;min-width:0;max-width:none;
     gap:12px;padding:9px 14px;justify-content:space-between}   /* 从 ☰ 右侧铺到屏幕右边 */
-  html.short #panel.mobOpen ~ #info{left:310px}                 /* 面板展开时从面板右边开始 */
+  html.short #panel.mobOpen ~ #info{left:310px}
+  html.rot #info{right:80px}   /* 竖握旋转时画面右侧 = 屏幕底部，避开浏览器/平台的底部提示条 */                 /* 面板展开时从面板右边开始 */
   html.short #info.on{transform:none}
   html.short #info .country{font-size:15px}
   html.short #info .coord{font-size:11px}   /* 信息条加宽后有位置显示坐标 */
@@ -2304,7 +2305,7 @@ const marker = new THREE.Group();
 const pin = new THREE.Mesh(new THREE.SphereGeometry(3.3,20,20),
   new THREE.MeshBasicMaterial({color:0xff5a5a}));
 marker.add(pin); marker.visible=false; scene.add(marker);
-const PIN_REF = 300;   // 基准相机距离：红点在此距离下保持目标屏幕大小
+const PIN_PX = IS_TOUCH ? 6 : 7.5;   // 红点在屏幕上的半径（像素）：手机 6，电脑 7.5
 
 let flyRaf=0;
 function flyCam(lat, lon, dist, D){
@@ -2757,7 +2758,8 @@ function animate(t){
     const o = d>620 ? 0 : edge*size;
     sp.material.opacity=o; sp.visible=o>.01;
   });
-  if(marker.visible) marker.scale.setScalar(camera.position.distanceTo(marker.position)/PIN_REF);   // 红点屏幕大小恒定
+  if(marker.visible) marker.scale.setScalar(   // 红点按屏幕像素保持固定大小（与屏幕高度无关）
+    camera.position.distanceTo(marker.position)*2*Math.tan(camera.fov*DEG/2)*PIN_PX/appH()/3.3);
   renderer.render(scene,camera);
 }
 animate(0);
