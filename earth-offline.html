@@ -187,7 +187,8 @@
   .dirpad{display:grid;grid-template-columns:repeat(4,1fr) 1.6fr;gap:6px;margin-top:6px}
   .dbtn{background:rgba(80,160,210,.12);border:1px solid var(--line);color:var(--ink);
     font-size:15px;padding:8px 0;border-radius:8px}
-  .dbtn:active{background:rgba(55,213,255,.25)}
+  .dbtn:active,.dbtn.hold{background:rgba(55,213,255,.25)}
+  .dbtn{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
   .dbtn.unlock{color:var(--accent2);font-size:12px;letter-spacing:.04em}
   .dbtn.unlock.on{background:rgba(255,180,84,.28);border-color:var(--accent2);color:#ffe2b0}
 
@@ -2614,8 +2615,24 @@ document.querySelectorAll('#panel input[type=range]').forEach(el=>{
     else if(d==='right')lon+=DSTEP; else if(d==='left')lon-=DSTEP;
     microStep(lat,lon);
   }
+  /* 按住连续移动：按下先走一步，0.4 秒后开始连发，按得越久越快（最快约每秒 25 步） */
   document.querySelectorAll('.dbtn[data-d]').forEach(b=>{
-    b.addEventListener('click', ()=>nudge(b.dataset.d));
+    let timer=0, t0=0;
+    const stop=()=>{ clearTimeout(timer); timer=0; b.classList.remove('hold'); };
+    const tick=()=>{
+      nudge(b.dataset.d);
+      const held=performance.now()-t0;
+      timer=setTimeout(tick, held<1500 ? 110 : held<3000 ? 70 : 40);
+    };
+    b.addEventListener('pointerdown', e=>{
+      e.preventDefault(); stop();
+      try{ b.setPointerCapture(e.pointerId); }catch(err){}
+      t0=performance.now(); b.classList.add('hold');
+      nudge(b.dataset.d);
+      timer=setTimeout(tick, 400);
+    });
+    ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev, stop));
+    b.addEventListener('contextmenu', e=>e.preventDefault());   // 长按不弹系统菜单
   });
   document.getElementById('unlockBtn').onclick=()=>{
     if(locked){ setLocked(false); return; }
