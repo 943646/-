@@ -37,9 +37,10 @@
   .brand .en{font-size:12px;color:var(--dim);margin-top:4px;font-weight:300;letter-spacing:.06em}
 
   #panel{position:fixed;left:24px;top:78px;z-index:20;width:340px;background:var(--panel);
-    border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(14px);overflow:hidden;
-    box-shadow:0 18px 50px rgba(0,0,0,.5);max-height:calc(100% - 150px)}
+    border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(14px);overflow-x:hidden;overflow-y:auto;
+    box-shadow:0 18px 50px rgba(0,0,0,.5);max-height:calc(100% - 172px)}   /* 底部给数据来源说明留位置；超出可滚动 */
   #panel::-webkit-scrollbar{display:none}
+  #panel .ph{position:sticky;top:0;z-index:2;background:rgba(6,18,30,.97)}
   #panel{scrollbar-width:none;scrollbar-color:transparent transparent;-ms-overflow-style:none}
   #panel .ph{display:flex;align-items:center;gap:8px;padding:12px 15px;border-bottom:1px solid var(--line);
     font-weight:600;font-size:13px;letter-spacing:.16em;color:var(--accent)}
@@ -86,13 +87,14 @@
   .dl a:hover{background:rgba(255,180,84,.24)}
   .dl a.alt{background:none;border:none;padding:0;font-size:11px;color:var(--dim)}
 
-  #srcpanel{position:fixed;right:24px;top:78px;z-index:20;width:320px;background:var(--panel);
+  #srcpanel{position:fixed;right:24px;top:16px;z-index:20;width:320px;background:var(--panel);
     border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(14px);
-    box-shadow:0 18px 50px rgba(0,0,0,.5);overflow:hidden}
+    box-shadow:0 18px 50px rgba(0,0,0,.5);overflow:hidden;
+    display:flex;flex-direction:column;max-height:calc(100% - 300px)}   /* 右上角；不与右下角标尺重叠 */
   #srcpanel .ph{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;
     border-bottom:1px solid var(--line);cursor:pointer;font-weight:600;font-size:13px;
     letter-spacing:.12em;color:var(--accent2)}
-  #srcpanel .body{padding:8px 15px 12px;max-height:380px;overflow:auto}
+  #srcpanel .body{padding:8px 15px 12px;overflow:auto;flex:1 1 auto;min-height:0}
   #srcpanel.collapsed .body{display:none}
   .src-item{padding:9px 0;border-bottom:1px dashed var(--line);font-size:11.5px}
   .src-item:last-child{border-bottom:none}
@@ -158,17 +160,22 @@
   @media(max-width:900px){#panel{width:236px}#legend{display:none}}
 
   /* ── 移动端：控制面板默认收起为悬浮按钮，避免遮挡地球 ── */
-  #menuBtn,#menuClose{display:none;position:fixed;z-index:40;width:52px;height:52px;border-radius:50%;
+  #menuBtn{display:none;position:fixed;z-index:40;width:52px;height:52px;border-radius:50%;
     box-shadow:0 8px 24px rgba(55,213,255,.35);align-items:center;justify-content:center;
     font-size:22px;font-weight:700;color:#02121e;background:linear-gradient(120deg,#0e7fb8,#37d5ff)}
   #menuBtn{left:16px;bottom:96px}
-  #menuClose{left:16px;bottom:16px;background:rgba(6,18,30,.9);border:1px solid var(--line);color:var(--accent)}
+  /* 控制台标题栏右上角的关闭按钮：仅手机抽屉/侧边栏模式显示 */
+  #menuClose{display:none;margin-left:auto;width:30px;height:30px;padding:0;border-radius:8px;flex-shrink:0;
+    align-items:center;justify-content:center;font-size:15px;font-weight:700;letter-spacing:0;
+    background:rgba(80,160,210,.15);border:1px solid var(--line);color:var(--accent)}
+  #menuClose:active{background:rgba(55,213,255,.3)}
   @media(max-width:900px){
     #menuBtn{display:flex}
     #panel{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:74%;
       transform:translateY(calc(100% + 16px));transition:transform .32s ease;border-radius:14px}
     #panel.mobOpen{transform:translateY(0)}
-    #panel.mobOpen ~ #menuClose{display:flex}
+    #menuClose{display:flex}
+    #panel .ph{position:sticky;top:0;z-index:2;background:rgba(6,18,30,.97)}
     header{padding:10px 12px}
     .brand .sub{display:none}
     #help{display:none}
@@ -215,7 +222,9 @@
   html.short .pbody{padding:10px 12px 12px}
   html.short #menuBtn{display:flex;left:14px;bottom:14px;width:46px;height:46px;font-size:20px}
   #panel.mobOpen ~ #menuBtn{display:none !important}   /* 面板展开时只留关闭按钮 */
-  html.short #panel.mobOpen ~ #menuClose{display:flex;left:308px;bottom:14px;width:46px;height:46px}   /* 紧贴侧边栏右侧 */
+  html.short #menuClose{display:flex}
+  /* 手机抽屉/侧边栏：标题栏固定在顶部，滚动时关闭按钮始终可见 */
+  html.short #panel .ph{position:sticky;top:0;z-index:2;background:rgba(6,18,30,.97)}
   html.short #info{left:auto;right:12px;bottom:12px;top:auto;transform:none;width:auto;min-width:0;max-width:calc(100% - 330px);
     gap:12px;padding:9px 14px}
   html.short #info.on{transform:none}
@@ -253,7 +262,7 @@ addEventListener('load', function(){ setTimeout(function(){
 </header>
 
 <div id="panel">
-  <div class="ph"><span class="dot"></span>定位控制台 · NAVIGATE</div>
+  <div class="ph"><span class="dot"></span>定位控制台 · NAVIGATE<button id="menuClose" title="收起控制台">✕</button></div>
   <div class="pbody">
     <div class="row">
       <div class="fld"><label>纬度 LAT<small>单位：度 ° · 北正南负</small></label><input id="lat" type="text" value="30.57" placeholder="-90 ~ 90" autocomplete="off" spellcheck="false"></div>
@@ -333,7 +342,6 @@ addEventListener('load', function(){ setTimeout(function(){
 </div>
 
 <button id="menuBtn" title="打开控制台">☰</button>
-<button id="menuClose" title="收起控制台">✕</button>
 
 <div id="rotateHint">📱 请横握手机，体验与电脑端一致</div>
 
@@ -873,7 +881,7 @@ function centroid(g){
 
 /* ── 定位标记 ── */
 const marker = new THREE.Group();
-const pin = new THREE.Mesh(new THREE.SphereGeometry(2.2,16,16),
+const pin = new THREE.Mesh(new THREE.SphereGeometry(3.3,20,20),
   new THREE.MeshBasicMaterial({color:0xff5a5a}));
 marker.add(pin); marker.visible=false; scene.add(marker);
 const PIN_REF = 300;   // 基准相机距离：红点在此距离下保持目标屏幕大小
@@ -1139,8 +1147,45 @@ function inRing(x,y,ring){
 /* ── 图层开关 / 滑块 ── */
 document.getElementById('lyBorders').onchange=e=>borderGroup.visible=e.target.checked;
 document.getElementById('lyLabels').onchange=e=>labelGroup.visible=e.target.checked;
-document.getElementById('lyHypso').onchange=e=>uniforms.uHypso.value=e.target.checked?1:0;
-document.getElementById('lyBathy').onchange=e=>uniforms.uBathy.value=e.target.checked?1:0;
+/* ── 右下角标尺：用与地球着色器相同的配色公式生成，跟随图层开关变化 ── */
+const mix3=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*Math.min(1,Math.max(0,t)));
+function landCol(m){   // 与片元着色器 landCol 一致
+  if(m<200) return mix3([.30,.52,.32],[.42,.60,.34],m/200);
+  if(m<500) return mix3([.42,.60,.34],[.58,.62,.38],(m-200)/300);
+  if(m<1500) return mix3([.58,.62,.38],[.68,.58,.38],(m-500)/1000);
+  if(m<3000) return mix3([.68,.58,.38],[.78,.66,.48],(m-1500)/1500);
+  if(m<5200) return mix3([.78,.66,.48],[.86,.80,.70],(m-3000)/2200);
+  return mix3([.86,.80,.70],[.97,.97,.97],(m-5200)/2000);
+}
+function oceanCol(m){  // 与片元着色器 oceanCol 一致
+  if(m<200) return mix3([.22,.62,.72],[.16,.48,.66],m/200);
+  if(m<1500) return mix3([.16,.48,.66],[.10,.34,.52],(m-200)/1300);
+  if(m<4000) return mix3([.10,.34,.52],[.06,.21,.38],(m-1500)/2500);
+  return mix3([.06,.21,.38],[.02,.09,.20],(m-4000)/4000);
+}
+/* 标尺位置(%) ↔ 高程(m)：与刻度标注对应的分段线性映射 */
+const LEGEND_STOPS=[[0,8848],[4,8848],[18,3000],[34,1000],[45,200],[50,0],[58,-1000],[72,-4000],[86,-8000],[97,-11000],[100,-11000]];
+function legendElev(pct){
+  for(let i=1;i<LEGEND_STOPS.length;i++){ const [p0,e0]=LEGEND_STOPS[i-1],[p1,e1]=LEGEND_STOPS[i];
+    if(pct<=p1) return p1===p0 ? e1 : e0+(e1-e0)*(pct-p0)/(p1-p0); }
+  return -11000;
+}
+function updateLegend(){
+  const hyp=uniforms.uHypso.value>.5, bat=uniforms.uBathy.value>.5, stops=[];
+  const css=c=>`rgb(${c.map(v=>Math.round(Math.min(1,v)*255)).join(',')})`;
+  for(let pct=0;pct<=100;pct+=1){
+    const h=legendElev(pct);
+    let c;
+    if(pct<50) c = hyp ? landCol(h) : (v=>[v,v,v])(.35+.5*Math.sqrt(Math.max(0,h)/8850));   // 关闭分层设色时为灰度
+    else c = bat ? oceanCol(-h) : [.18,.45,.62];                                              // 关闭深度渐变时为单一蓝色
+    stops.push(`${css(c)} ${pct}%`);
+    if(pct===49) stops.push(`${css(c)} 49.9%`);   // 海平面处颜色硬切换
+  }
+  document.querySelector('#legend .bar').style.background=`linear-gradient(to bottom,${stops.join(',')})`;
+}
+updateLegend();
+document.getElementById('lyHypso').onchange=e=>{ uniforms.uHypso.value=e.target.checked?1:0; updateLegend(); };
+document.getElementById('lyBathy').onchange=e=>{ uniforms.uBathy.value=e.target.checked?1:0; updateLegend(); };
 document.getElementById('lyAtmo').onchange=e=>atmo.visible=e.target.checked;
 document.getElementById('dispSlider').oninput=e=>{
   uniforms.uDisp.value=+e.target.value;
